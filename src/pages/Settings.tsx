@@ -50,6 +50,15 @@ export default function Settings() {
     }
 
     setIsSubmitting(true);
+    
+    // Ensure session is fresh before attempting update
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      setPasswordError('尚未登录或登录已过期，请重新登录');
+      setIsSubmitting(false);
+      return;
+    }
+
     const { error } = await supabase.auth.updateUser({
       password: newPassword
     });
