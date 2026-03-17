@@ -5,7 +5,7 @@ import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 import { getBook, updateBookPage, type Book } from '../utils/db';
 import { translateWord } from '../utils/translate';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { ArrowLeft, Loader2, ZoomIn, ZoomOut } from 'lucide-react';
 import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
 pdfjs.GlobalWorkerOptions.workerSrc = pdfWorker;
@@ -20,6 +20,7 @@ const Reader: React.FC = () => {
   const [translation, setTranslation] = useState('');
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0, show: false });
   const [containerWidth, setContainerWidth] = useState(800);
+  const [scale, setScale] = useState(1.0);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -228,6 +229,28 @@ const Reader: React.FC = () => {
         </h1>
         <div className="ml-2 sm:ml-auto flex items-center gap-1 sm:gap-4 text-xs sm:text-sm text-gray-600 shrink-0">
           <span className="hidden md:inline text-xs text-gray-400 mr-2">点击或划选英文单词进行翻译</span>
+          
+          {/* Zoom Controls */}
+          <div className="flex items-center bg-gray-100 rounded mr-1">
+            <button 
+              onClick={() => setScale(s => Math.max(0.5, s - 0.1))} 
+              className="p-1 sm:p-1.5 hover:bg-gray-200 rounded disabled:opacity-50"
+              disabled={scale <= 0.5}
+            >
+              <ZoomOut size={14} />
+            </button>
+            <span className="w-9 sm:w-11 text-center font-mono text-[10px] sm:text-xs">
+              {Math.round(scale * 100)}%
+            </span>
+            <button 
+              onClick={() => setScale(s => Math.min(3.0, s + 0.1))} 
+              className="p-1 sm:p-1.5 hover:bg-gray-200 rounded disabled:opacity-50"
+              disabled={scale >= 3.0}
+            >
+              <ZoomIn size={14} />
+            </button>
+          </div>
+
           <button 
             disabled={pageNumber <= 1} 
             onClick={() => {
@@ -270,6 +293,7 @@ const Reader: React.FC = () => {
           >
             <Page
               pageNumber={pageNumber}
+              scale={scale}
               renderTextLayer={true}
               renderAnnotationLayer={true}
               width={containerWidth}

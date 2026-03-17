@@ -258,7 +258,7 @@ const Home: React.FC = () => {
                       className="absolute -top-1 left-4 w-5 h-16 bg-[#8b2323] shadow-md z-20 transition-all duration-300 group-hover:h-20" 
                       style={{ clipPath: 'polygon(0 0, 100% 0, 100% 100%, 50% 85%, 0 100%)' }}
                     >
-                      <div className="absolute bottom-2 w-full text-center text-[8px] text-white/80 font-mono -scale-y-100 rotate-180">
+                      <div className="absolute bottom-2 w-full text-center text-[10px] text-white/90 font-mono font-bold">
                         {book.lastPage}
                       </div>
                     </div>
