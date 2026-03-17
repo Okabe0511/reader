@@ -1,0 +1,3 @@
+/api/dict/*  https://dict.youdao.com/:splat  200
+/api/fanyi/* https://fanyi.youdao.com/:splat 200
+/* /index.html 200
