@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getBooks, saveBook, deleteBook, type Book } from '../utils/db';
-import { BookOpen, Trash2, Plus, Settings, Share2, CheckCircle2, ListChecks, X } from 'lucide-react';
+import { getBooks, saveBook, deleteBook, checkBookCache, downloadAndCacheBook, type Book } from '../utils/db';
+import { BookOpen, Trash2, Plus, Settings, Share2, CheckCircle2, ListChecks, X, DownloadCloud } from 'lucide-react';
 import { pdfjs } from 'react-pdf';
 import { supabase } from '../lib/supabase';
 import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
@@ -42,7 +42,19 @@ const Home: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [isManaging, setIsManaging] = useState(false);
   const [selectedBooks, setSelectedBooks] = useState<Set<string>>(new Set());
+  const [downloadingStatus, setDownloadingStatus] = useState<Record<string, 'none' | 'downloading' | 'cached'>>({});
   const navigate = useNavigate();
+
+  const checkAllCaches = async (loadedBooks: Omit<Book, 'data'>[]) => {
+    const statuses: Record<string, 'none' | 'downloading' | 'cached'> = {};
+    for (const book of loadedBooks) {
+      if (book.fileUrl) {
+         const cached = await checkBookCache(book.id, book.fileUrl);
+         statuses[book.id] = cached ? 'cached' : 'none';
+      }
+    }
+    setDownloadingStatus(statuses);
+  };
 
   const loadBooks = async () => {
     // 1. Try to load from fast local cache temporarily
@@ -52,7 +64,9 @@ const Home: React.FC = () => {
     
     const cachedBooks = localStorage.getItem(cacheKey);
     if (cachedBooks) {
-      setBooks(JSON.parse(cachedBooks));
+      const parsed = JSON.parse(cachedBooks);
+      setBooks(parsed);
+      checkAllCaches(parsed);
       setLoading(false); // Display cached books immediately
     } else {
       setLoading(true);
@@ -61,8 +75,19 @@ const Home: React.FC = () => {
     // 2. Fetch fresh data from Supabase in the background
     const loadedBooks = await getBooks();
     setBooks(loadedBooks);
+    checkAllCaches(loadedBooks);
     localStorage.setItem(cacheKey, JSON.stringify(loadedBooks));
     setLoading(false);
+  };
+
+  const handleDownloadAction = async (book: Omit<Book, 'data'>, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!book.fileUrl) return;
+
+    setDownloadingStatus(prev => ({ ...prev, [book.id]: 'downloading' }));
+    const success = await downloadAndCacheBook(book.id, book.fileUrl);
+    setDownloadingStatus(prev => ({ ...prev, [book.id]: success ? 'cached' : 'none' }));
+    if (!success) alert('下载失败，请重试');
   };
 
   useEffect(() => {
@@ -290,7 +315,25 @@ const Home: React.FC = () => {
                   </div>
 
                   {!isManaging && (
-                    <div className="flex items-center flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className={`flex items-center flex-shrink-0 transition-opacity ${downloadingStatus[book.id] === 'downloading' || downloadingStatus[book.id] === 'cached' ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                      {downloadingStatus[book.id] === 'cached' ? (
+                        <div className="text-[#4A3C31] p-1.5" title="已缓存至本地">
+                          <CheckCircle2 size={15} />
+                        </div>
+                      ) : downloadingStatus[book.id] === 'downloading' ? (
+                        <div className="text-blue-600 p-1.5 animate-pulse" title="下载中...">
+                          <DownloadCloud size={15} />
+                        </div>
+                      ) : (
+                        <button 
+                          onClick={(e) => handleDownloadAction(book, e)}
+                          className="text-stone-400 hover:text-stone-800 p-1.5 rounded-full hover:bg-stone-200 transition-colors"
+                          title="下载至本地离线阅读"
+                        >
+                          <DownloadCloud size={15} />
+                        </button>
+                      )}
+
                       <button 
                         onClick={(e) => handleShare(book, e)}
                         className="text-stone-400 hover:text-blue-700 p-1.5 rounded-full hover:bg-blue-50 transition-colors"

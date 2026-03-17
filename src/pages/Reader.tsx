@@ -305,7 +305,7 @@ const Reader: React.FC = () => {
       {/* Translation Tooltip */}
       {tooltipPos.show && (
         <div 
-          className="translation-tooltip fixed z-50 bg-gray-900 text-white px-4 py-2 rounded-lg shadow-xl text-sm max-w-sm pointer-events-none transform -translate-x-1/2 -translate-y-full flex flex-col gap-1 border border-gray-700"
+          className="translation-tooltip fixed z-50 bg-gray-900 text-white px-2 py-1.5 rounded-md shadow-xl text-xs max-w-[80vw] sm:max-w-xs pointer-events-none transform -translate-x-1/2 -translate-y-full flex flex-col gap-0.5 border border-gray-700"
           style={{ 
             left: Math.max(0, tooltipPos.x), 
             top: tooltipPos.y,

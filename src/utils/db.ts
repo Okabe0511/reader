@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import localforage from 'localforage';
 
 export interface Book {
   id: string;
@@ -71,14 +72,34 @@ export const getBook = async (id: string) => {
   const { data: book, error } = await supabase.from('books').select('*').eq('id', id).single();
   if (error || !book) return null;
 
-  // Download actual PDF binary from Storage
-  const { data: fileData, error: downloadError } = await supabase.storage.from('books').download(book.file_url);
-  if (downloadError) {
-    console.error('Download error:', downloadError);
-    return null;
+  let arrayBuffer: ArrayBuffer | null = null;
+  const cacheKey = `book_data_${id}_${book.file_url}`;
+  
+  try {
+    const cachedData = await localforage.getItem<ArrayBuffer>(cacheKey);
+    if (cachedData) {
+      arrayBuffer = cachedData;
+    }
+  } catch (err) {
+    console.warn('Failed to read from cache', err);
   }
 
-  const arrayBuffer = await fileData.arrayBuffer();
+  if (!arrayBuffer) {
+    // Download actual PDF binary from Storage
+    const { data: fileData, error: downloadError } = await supabase.storage.from('books').download(book.file_url);
+    if (downloadError) {
+      console.error('Download error:', downloadError);
+      return null;
+    }
+
+    arrayBuffer = await fileData.arrayBuffer();
+    
+    try {
+      await localforage.setItem(cacheKey, arrayBuffer);
+    } catch (err) {
+      console.warn('Failed to save to cache', err);
+    }
+  }
   
   return {
     id: book.id,
@@ -89,6 +110,38 @@ export const getBook = async (id: string) => {
   } as Book;
 };
 
+export const checkBookCache = async (id: string, fileUrl: string): Promise<boolean> => {
+  try {
+    const key = `book_data_${id}_${fileUrl}`;
+    const keys = await localforage.keys();
+    return keys.includes(key);
+  } catch (err) {
+    return false;
+  }
+};
+
+export const downloadAndCacheBook = async (id: string, fileUrl: string): Promise<boolean> => {
+  // Check if it's already there
+  const isCached = await checkBookCache(id, fileUrl);
+  if (isCached) return true;
+
+  // Download actual PDF binary from Storage
+  const { data: fileData, error: downloadError } = await supabase.storage.from('books').download(fileUrl);
+  if (downloadError || !fileData) {
+    console.error('Download error:', downloadError);
+    return false;
+  }
+
+  const arrayBuffer = await fileData.arrayBuffer();
+  try {
+    const cacheKey = `book_data_${id}_${fileUrl}`;
+    await localforage.setItem(cacheKey, arrayBuffer);
+    return true;
+  } catch (err) {
+    console.warn('Failed to save to cache', err);
+    return false;
+  }
+};
 export const deleteBook = async (id: string) => {
   // Find the file path
   const { data: book } = await supabase.from('books').select('file_url').eq('id', id).single();
@@ -96,6 +149,13 @@ export const deleteBook = async (id: string) => {
   if (book && book.file_url) {
     // Delete file from Storage
     await supabase.storage.from('books').remove([book.file_url]);
+    
+    // Clear local cache
+    try {
+      await localforage.removeItem(`book_data_${id}_${book.file_url}`);
+    } catch (err) {
+      console.warn('Failed to clear cache for deleted book', err);
+    }
   }
   
   // Delete row from Database
