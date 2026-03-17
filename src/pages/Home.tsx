@@ -49,7 +49,7 @@ const Home: React.FC = () => {
     const statuses: Record<string, 'none' | 'downloading' | 'cached'> = {};
     for (const book of loadedBooks) {
       if (book.fileUrl) {
-         const cached = await checkBookCache(book.id, book.fileUrl);
+         const cached = await checkBookCache(book.id);
          statuses[book.id] = cached ? 'cached' : 'none';
       }
     }
@@ -74,9 +74,11 @@ const Home: React.FC = () => {
 
     // 2. Fetch fresh data from Supabase in the background
     const loadedBooks = await getBooks();
-    setBooks(loadedBooks);
-    checkAllCaches(loadedBooks);
-    localStorage.setItem(cacheKey, JSON.stringify(loadedBooks));
+    if (loadedBooks) {
+      setBooks(loadedBooks);
+      checkAllCaches(loadedBooks);
+      localStorage.setItem(cacheKey, JSON.stringify(loadedBooks));
+    }
     setLoading(false);
   };
 
@@ -85,7 +87,7 @@ const Home: React.FC = () => {
     if (!book.fileUrl) return;
 
     setDownloadingStatus(prev => ({ ...prev, [book.id]: 'downloading' }));
-    const success = await downloadAndCacheBook(book.id, book.fileUrl);
+    const success = await downloadAndCacheBook(book);
     setDownloadingStatus(prev => ({ ...prev, [book.id]: success ? 'cached' : 'none' }));
     if (!success) alert('下载失败，请重试');
   };
