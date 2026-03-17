@@ -1,0 +1,16 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/dict/:match*",
+      "destination": "https://dict.youdao.com/:match*"
+    },
+    {
+      "source": "/api/fanyi/:match*",
+      "destination": "https://fanyi.youdao.com/:match*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
