@@ -26,7 +26,7 @@ const Reader: React.FC = () => {
   useEffect(() => {
     if (id) {
       getBook(id).then(data => {
-        if (data) {
+        if (data && data.data) {
           setBook(data);
           if (data.lastPage) {
             setPageNumber(data.lastPage);
