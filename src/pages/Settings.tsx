@@ -10,6 +10,7 @@ export default function Settings() {
   
   // Password change states
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
@@ -40,6 +41,10 @@ export default function Settings() {
     setPasswordError('');
     setPasswordSuccess('');
 
+    if (!oldPassword) {
+      setPasswordError('请先输入当前原密码');
+      return;
+    }
     if (newPassword.length < 6) {
       setPasswordError('密码长度不能少于6位');
       return;
@@ -52,13 +57,26 @@ export default function Settings() {
     setIsSubmitting(true);
     
     // Ensure session is fresh before attempting update
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      setPasswordError('尚未登录或登录已过期，请重新登录');
+    const { data: { session: currentSession } } = await supabase.auth.getSession();
+    if (!currentSession || !currentSession.user.email) {
+      setPasswordError('尚未登录或未获取到账号信息，请重新登录');
       setIsSubmitting(false);
       return;
     }
 
+    // Step 1: Re-authenticate to get a fresh token
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: currentSession.user.email,
+      password: oldPassword,
+    });
+
+    if (signInError) {
+      setPasswordError('原密码错误，请重试');
+      setIsSubmitting(false);
+      return;
+    }
+
+    // Step 2: Now that session is freshly minted, update password
     const { error } = await supabase.auth.updateUser({
       password: newPassword
     });
@@ -67,6 +85,7 @@ export default function Settings() {
       setPasswordError(error.message || '修改密码失败，请重试');
     } else {
       setPasswordSuccess('密码修改成功');
+      setOldPassword('');
       setNewPassword('');
       setConfirmPassword('');
       setTimeout(() => {
@@ -142,6 +161,17 @@ export default function Settings() {
 
                   <div className="space-y-3">
                     <div>
+                      <label className="block text-sm font-bold text-stone-600 mb-1">原密码</label>
+                      <input 
+                        type="password"
+                        value={oldPassword}
+                        onChange={(e) => setOldPassword(e.target.value)}
+                        className="w-full px-3 py-2 bg-white border border-stone-300 rounded text-stone-800 focus:outline-none focus:ring-2 focus:ring-[#8b2323]/50 focus:border-[#8b2323]"
+                        placeholder="请输入当前登录密码"
+                        disabled={isSubmitting}
+                      />
+                    </div>
+                    <div>
                       <label className="block text-sm font-bold text-stone-600 mb-1">新密码</label>
                       <input 
                         type="password"
@@ -178,6 +208,7 @@ export default function Settings() {
                       onClick={() => {
                         setIsChangingPassword(false);
                         setPasswordError('');
+                        setOldPassword('');
                         setNewPassword('');
                         setConfirmPassword('');
                       }}
