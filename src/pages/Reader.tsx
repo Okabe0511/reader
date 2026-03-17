@@ -19,6 +19,7 @@ const Reader: React.FC = () => {
   const [selectedWord, setSelectedWord] = useState('');
   const [translation, setTranslation] = useState('');
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0, show: false });
+  const [containerWidth, setContainerWidth] = useState(800);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -189,6 +190,20 @@ const Reader: React.FC = () => {
     };
   }, [numPages]);
 
+  useEffect(() => {
+    const updateWidth = () => {
+      if (containerRef.current) {
+        const width = containerRef.current.clientWidth;
+        // 手机屏幕不再额外减去边距，充分利用屏幕宽度
+        const margin = width < 640 ? 0 : 40;
+        setContainerWidth(Math.min(width - margin, 800));
+      }
+    };
+    updateWidth();
+    window.addEventListener('resize', updateWidth);
+    return () => window.removeEventListener('resize', updateWidth);
+  }, []);
+
   if (!book || !pdfUrl) {
     return (
       <div className="h-screen flex items-center justify-center bg-gray-50">
@@ -201,38 +216,38 @@ const Reader: React.FC = () => {
   return (
     <div className="h-screen flex flex-col bg-gray-100 relative overflow-hidden" ref={containerRef}>
       {/* Header */}
-      <div className="h-14 bg-white shadow-sm flex items-center px-4 shrink-0 z-10 sticky top-0">
+      <div className="h-14 bg-white shadow-sm flex items-center px-2 sm:px-4 shrink-0 z-10 sticky top-0">
         <button 
           onClick={() => navigate('/')} 
-          className="p-2 hover:bg-gray-100 rounded-full transition-colors mr-3 text-gray-600"
+          className="p-1 sm:p-2 hover:bg-gray-100 rounded-full transition-colors mr-1 sm:mr-3 text-gray-600"
         >
           <ArrowLeft size={20} />
         </button>
-        <h1 className="text-lg font-medium text-gray-800 truncate" title={book.name}>
+        <h1 className="text-sm sm:text-lg font-medium text-gray-800 truncate flex-1" title={book.name}>
           {book.name}
         </h1>
-        <div className="ml-auto flex items-center gap-4 text-sm text-gray-600">
-          <span className="text-xs text-gray-400 mr-2">点击或划选英文单词进行翻译</span>
+        <div className="ml-2 sm:ml-auto flex items-center gap-1 sm:gap-4 text-xs sm:text-sm text-gray-600 shrink-0">
+          <span className="hidden md:inline text-xs text-gray-400 mr-2">点击或划选英文单词进行翻译</span>
           <button 
             disabled={pageNumber <= 1} 
             onClick={() => {
               setPageNumber(p => p - 1);
               scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
             }}
-            className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200 disabled:opacity-50"
+            className="px-2 py-1 bg-gray-100 rounded hover:bg-gray-200 disabled:opacity-50"
           >
-            上一页
+            上页
           </button>
-          <span>{pageNumber} / {numPages || '-'}</span>
+          <span className="w-10 sm:w-auto text-center">{pageNumber} <span className="hidden sm:inline">/ {numPages || '-'}</span></span>
           <button 
             disabled={pageNumber >= numPages} 
             onClick={() => {
               setPageNumber(p => p + 1);
               scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
             }}
-            className="px-3 py-1 bg-gray-100 rounded hover:bg-gray-200 disabled:opacity-50"
+            className="px-2 py-1 bg-gray-100 rounded hover:bg-gray-200 disabled:opacity-50"
           >
-            下一页
+            下页
           </button>
         </div>
       </div>
@@ -240,7 +255,7 @@ const Reader: React.FC = () => {
       {/* PDF Viewer */}
       <div 
         ref={scrollRef}
-        className="flex-1 overflow-auto bg-gray-100 py-6 custom-scrollbar text-center"
+        className="flex-1 overflow-auto bg-gray-100 py-2 sm:py-6 custom-scrollbar text-center"
       >
         <div className="inline-block bg-white shadow-lg relative rounded-sm group text-left">
           <Document
@@ -257,7 +272,7 @@ const Reader: React.FC = () => {
               pageNumber={pageNumber}
               renderTextLayer={true}
               renderAnnotationLayer={true}
-              width={containerRef.current ? Math.min(containerRef.current.clientWidth - 40, 800) : 800}
+              width={containerWidth}
             />
           </Document>
         </div>
