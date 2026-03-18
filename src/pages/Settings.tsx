@@ -1,13 +1,18 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { ArrowLeft, LogOut, User, Lock, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { ArrowLeft, LogOut, User, Lock, CheckCircle2, AlertCircle, Loader2, Volume2 } from 'lucide-react';
 import type { Session } from '@supabase/supabase-js';
 
 export default function Settings() {
   const navigate = useNavigate();
   const [session, setSession] = useState<Session | null>(null);
   
+  // Settings tab: Accent preference
+  const [accent, setAccent] = useState<'us' | 'uk'>(
+    (localStorage.getItem('pronunciation_accent') as 'us' | 'uk') || 'us'
+  );
+
   // Password change states
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [oldPassword, setOldPassword] = useState('');
@@ -128,6 +133,43 @@ export default function Settings() {
             <div className="flex flex-col">
               <span className="text-sm font-bold text-stone-500 mb-1 tracking-wider uppercase">Email</span>
               <span className="text-lg text-stone-800">{session?.user?.email || '加载中...'}</span>
+            </div>
+
+            <div className="flex flex-col">
+              <div className="flex items-center gap-2 mb-2">
+                <Volume2 size={16} className="text-stone-500" />
+                <span className="text-sm font-bold text-stone-500 tracking-wider uppercase">词典发音口音</span>
+              </div>
+              <div className="flex items-center gap-3 mt-1">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input 
+                    type="radio" 
+                    name="accent" 
+                    value="us"
+                    checked={accent === 'us'}
+                    onChange={() => {
+                      setAccent('us');
+                      localStorage.setItem('pronunciation_accent', 'us');
+                    }}
+                    className="accent-[#8b2323] w-4 h-4"
+                  />
+                  <span className="text-stone-800">美式英语 (US)</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer ml-4">
+                  <input 
+                    type="radio" 
+                    name="accent" 
+                    value="uk"
+                    checked={accent === 'uk'}
+                    onChange={() => {
+                      setAccent('uk');
+                      localStorage.setItem('pronunciation_accent', 'uk');
+                    }}
+                    className="accent-[#8b2323] w-4 h-4"
+                  />
+                  <span className="text-stone-800">英式英语 (UK)</span>
+                </label>
+              </div>
             </div>
 
             <div className="pt-2 border-t border-stone-300/60 mt-2">

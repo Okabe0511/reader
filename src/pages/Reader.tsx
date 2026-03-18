@@ -5,7 +5,7 @@ import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 import { getBook, updateBookPage, type Book } from '../utils/db';
 import { translateWord } from '../utils/translate';
-import { ArrowLeft, Loader2, ZoomIn, ZoomOut } from 'lucide-react';
+import { ArrowLeft, Loader2, ZoomIn, ZoomOut, Volume2 } from 'lucide-react';
 import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
 pdfjs.GlobalWorkerOptions.workerSrc = pdfWorker;
@@ -24,6 +24,8 @@ const Reader: React.FC = () => {
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -205,6 +207,24 @@ const Reader: React.FC = () => {
     return () => window.removeEventListener('resize', updateWidth);
   }, []);
 
+  const handlePlayAudio = (e: React.MouseEvent) => {
+    e.stopPropagation(); // 防止触发点击外部关闭气泡
+    if (!selectedWord || isPlayingAudio) return;
+    
+    setIsPlayingAudio(true);
+    const accent = localStorage.getItem('pronunciation_accent') === 'uk' ? '1' : '0'; // 1是英音, 0是美音 (默认)
+    // 采用有道公共语音接口
+    const audioUrl = `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent(selectedWord)}&type=${accent}`;
+    
+    const audio = new Audio(audioUrl);
+    audio.onended = () => setIsPlayingAudio(false);
+    audio.onerror = () => setIsPlayingAudio(false);
+    audio.play().catch(err => {
+      console.error('Audio play failed:', err);
+      setIsPlayingAudio(false);
+    });
+  };
+
   if (!book || !pdfUrl) {
     return (
       <div className="h-screen flex items-center justify-center bg-gray-50">
@@ -305,18 +325,28 @@ const Reader: React.FC = () => {
       {/* Translation Tooltip */}
       {tooltipPos.show && (
         <div 
-          className="translation-tooltip fixed z-50 bg-gray-900 text-white px-2 py-1.5 rounded-md shadow-xl text-xs max-w-[80vw] sm:max-w-xs pointer-events-none transform -translate-x-1/2 -translate-y-full flex flex-col gap-0.5 border border-gray-700"
+          className="translation-tooltip fixed z-50 bg-gray-900 text-white px-2 py-1.5 rounded-md shadow-xl text-xs max-w-[80vw] sm:max-w-xs pointer-events-auto transform -translate-x-1/2 -translate-y-full flex flex-col gap-0.5 border border-gray-700"
           style={{ 
             left: Math.max(0, tooltipPos.x), 
             top: tooltipPos.y,
             transition: 'top 0.1s ease-out, left 0.1s ease-out'
           }}
         >
-          <div className="font-semibold text-blue-200">{selectedWord}</div>
+          <div className="font-semibold text-blue-200 flex items-center justify-between gap-3">
+            <span>{selectedWord}</span>
+            <button 
+              onClick={handlePlayAudio}
+              disabled={isPlayingAudio}
+              className={`p-1 rounded-full ${isPlayingAudio ? 'text-blue-400' : 'text-gray-300 hover:text-white hover:bg-gray-700'} transition-colors`}
+              title="发音"
+            >
+              <Volume2 size={14} className={isPlayingAudio ? 'animate-pulse' : ''} />
+            </button>
+          </div>
           <div className="text-gray-100 break-words">{translation}</div>
           {/* Arrow */}
           <div 
-            className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-gray-900 rotate-45 border-r border-b border-gray-700"
+            className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-gray-900 rotate-45 border-r border-b border-gray-700 pointer-events-none"
           />
         </div>
       )}
