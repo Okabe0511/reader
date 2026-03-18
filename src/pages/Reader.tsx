@@ -137,8 +137,10 @@ const Reader: React.FC = () => {
       const selection = window.getSelection();
       if (selection && !selection.isCollapsed) {
         const text = selection.toString().trim();
-        if (text.length > 0 && text.length < 50 && /^[a-zA-Z\s-]+$/.test(text)) {
-          foundWord = text;
+        // Remove hyphens that are followed by whitespace (across lines) to merge words
+        const cleanText = text.replace(/-\s+/g, '');
+        if (cleanText.length > 0 && cleanText.length < 50 && /^[a-zA-Z\s-]+$/.test(cleanText)) {
+          foundWord = cleanText;
           wordRect = selection.getRangeAt(0).getBoundingClientRect();
           validSelection = true;
         }
@@ -159,7 +161,34 @@ const Reader: React.FC = () => {
               let isWordClicked = false;
               while ((m = regex.exec(text)) !== null) {
                 if (offset >= m.index && offset <= m.index + m[0].length) {
-                  foundWord = m[0];
+                  let expandedWord = m[0];
+                  
+                  // 处理跨行连字符单词，组合上一行或下一行的对应部分
+                  if (expandedWord.endsWith('-') && text.substring(m.index + m[0].length).trim() === '') {
+                    let nextNode: Node | null = textNode.parentElement?.nextSibling || null;
+                    while (nextNode && (!nextNode.textContent || !nextNode.textContent.trim())) {
+                      nextNode = nextNode.nextSibling;
+                    }
+                    if (nextNode && nextNode.textContent) {
+                      const nextMatch = nextNode.textContent.match(/^[a-zA-Z]+/);
+                      if (nextMatch) {
+                        expandedWord = expandedWord.slice(0, -1) + nextMatch[0];
+                      }
+                    }
+                  } else if (text.substring(0, m.index).trim() === '') {
+                    let prevNode: Node | null = textNode.parentElement?.previousSibling || null;
+                    while (prevNode && (!prevNode.textContent || !prevNode.textContent.trim())) {
+                      prevNode = prevNode.previousSibling;
+                    }
+                    if (prevNode && prevNode.textContent) {
+                      const prevMatch = prevNode.textContent.trim().match(/[a-zA-Z]+-$/);
+                      if (prevMatch) {
+                        expandedWord = prevMatch[0].slice(0, -1) + expandedWord;
+                      }
+                    }
+                  }
+
+                  foundWord = expandedWord;
                   const wordRange = document.createRange();
                   wordRange.setStart(textNode, m.index);
                   wordRange.setEnd(textNode, m.index + m[0].length);
