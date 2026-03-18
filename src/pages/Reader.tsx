@@ -164,7 +164,8 @@ const Reader: React.FC = () => {
                   let expandedWord = m[0];
                   
                   // 处理跨行连字符单词，组合上一行或下一行的对应部分
-                  if (expandedWord.endsWith('-') && text.substring(m.index + m[0].length).trim() === '') {
+                  // 情况1：点击的是上半部分 (例如 "omnip-")，或者它包含连字符并且在句子末尾附近
+                  if (expandedWord.endsWith('-')) {
                     let nextNode: Node | null = textNode.parentElement?.nextSibling || null;
                     while (nextNode && (!nextNode.textContent || !nextNode.textContent.trim())) {
                       nextNode = nextNode.nextSibling;
@@ -175,17 +176,28 @@ const Reader: React.FC = () => {
                         expandedWord = expandedWord.slice(0, -1) + nextMatch[0];
                       }
                     }
-                  } else if (text.substring(0, m.index).trim() === '') {
-                    let prevNode: Node | null = textNode.parentElement?.previousSibling || null;
-                    while (prevNode && (!prevNode.textContent || !prevNode.textContent.trim())) {
-                      prevNode = prevNode.previousSibling;
-                    }
-                    if (prevNode && prevNode.textContent) {
-                      const prevMatch = prevNode.textContent.trim().match(/[a-zA-Z]+-$/);
+                  } 
+                  
+                  // 情况2：点击的是下半部分 (例如 "otent")，我们要往前找有没有带 "-" 的
+                  // 在 React-PDF 中，同一段落的文本通常分布在多个相邻的 span 中
+                  let prevNode: Node | null = textNode.parentElement?.previousSibling || null;
+                  // 往回最多找 3 个节点，防止跨段落
+                  let lookBack = 3;
+                  while (prevNode && lookBack > 0) {
+                    if (prevNode.textContent && prevNode.textContent.trim()) {
+                      const prevText = prevNode.textContent.trim();
+                      const prevMatch = prevText.match(/[a-zA-Z]+-$/);
                       if (prevMatch) {
+                        // 找到了上半部分带横杠的单词
                         expandedWord = prevMatch[0].slice(0, -1) + expandedWord;
+                        break;
+                      } else if (prevText.match(/[a-zA-Z]+$/)) {
+                        // 遇到了正常的单词，说明没有被截断，停止寻找
+                        break;
                       }
                     }
+                    prevNode = prevNode.previousSibling;
+                    lookBack--;
                   }
 
                   foundWord = expandedWord;
