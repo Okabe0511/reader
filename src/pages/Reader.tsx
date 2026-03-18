@@ -115,6 +115,14 @@ const Reader: React.FC = () => {
         return;
       }
 
+      // If tooltip is showing, any click outside should just close it and do nothing else
+      if (tooltipPos.show) {
+        setTooltipPos(prev => ({ ...prev, show: false }));
+        // Clear selection to prevent immediate re-triggering
+        window.getSelection()?.removeAllRanges();
+        return;
+      }
+
       // Pagination clicks on the 25% left/right edges
       const vw = window.innerWidth;
       const x = e.clientX;
@@ -237,7 +245,7 @@ const Reader: React.FC = () => {
       document.removeEventListener('mouseup', handleClick);
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [numPages]);
+  }, [numPages, tooltipPos.show]);
 
   useEffect(() => {
     const updateWidth = () => {
