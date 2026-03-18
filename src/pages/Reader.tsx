@@ -163,48 +163,46 @@ const Reader: React.FC = () => {
               while ((m = regex.exec(text)) !== null) {
                 if (offset >= m.index && offset <= m.index + m[0].length) {
                   let expandedWord = m[0];
+
+                  // 由于 react-pdf 的分层特点，一行或跨行的文本会被随意拆分成多个并列的 span 节点。
+                  // 为了安全地拼接被连字符截断的单词，我们直接在 DOM 中向前后捕获一定距离的文本。
+
+                  // 1. 往前找（解决点击了下半部分 "otent" 的情况，向前寻找 "omnip-"）
+                  let precedingText = text.substring(0, m.index);
+                  let crawlerPrev = textNode.parentElement?.previousElementSibling || null;
+                  let stepsPrev = 15;
+                  while (crawlerPrev && stepsPrev > 0 && precedingText.length < 60) {
+                    if (crawlerPrev.textContent) {
+                      precedingText = crawlerPrev.textContent + precedingText;
+                    }
+                    crawlerPrev = crawlerPrev.previousElementSibling;
+                    stepsPrev--;
+                  }
                   
-                  // 处理跨行连字符单词，组合上一行或下一行的对应部分
-                  // 情况1：点击的是上半部分 (例如 "omnip-")，或者它包含连字符并且在句子末尾附近
+                  // 检查前面的文本合并后，是否正好以 "字母+连字符" 结尾（允许忽略尾部多余空白）
+                  const matchPrev = precedingText.replace(/\s+$/, '').match(new RegExp(`[a-zA-Z]+[${DASH_PATTERN}]$`));
+                  if (matchPrev) {
+                    expandedWord = matchPrev[0].slice(0, -1) + expandedWord;
+                  }
+
+                  // 2. 往后找（解决点击了上半部分 "omnip-" 的情况，向后寻找 "otent"）
                   if (new RegExp(`[${DASH_PATTERN}]$`).test(expandedWord)) {
-                    let nextNode: Node | null = textNode.parentElement?.nextSibling || null;
-                    let lookAhead = 3;
-                    while (nextNode && lookAhead > 0) {
-                      if (nextNode.textContent && nextNode.textContent.trim()) {
-                        const nextText = nextNode.textContent.trim();
-                        const nextMatch = nextText.match(/^[a-zA-Z]+/);
-                        if (nextMatch) {
-                          expandedWord = expandedWord.slice(0, -1) + nextMatch[0];
-                          break;
-                        } else if (nextText.match(/^[a-zA-Z]/)) {
-                          break;
-                        }
+                    let followingText = text.substring(m.index + m[0].length);
+                    let crawlerNext = textNode.parentElement?.nextElementSibling || null;
+                    let stepsNext = 15;
+                    while (crawlerNext && stepsNext > 0 && followingText.length < 60) {
+                      if (crawlerNext.textContent) {
+                        followingText = followingText + crawlerNext.textContent;
                       }
-                      nextNode = nextNode.nextSibling;
-                      lookAhead--;
+                      crawlerNext = crawlerNext.nextElementSibling;
+                      stepsNext--;
                     }
-                  } 
-                  
-                  // 情况2：点击的是下半部分 (例如 "otent")，我们要往前找有没有带 "-" 的
-                  // 在 React-PDF 中，同一段落的文本通常分布在多个相邻的 span 中
-                  let prevNode: Node | null = textNode.parentElement?.previousSibling || null;
-                  // 往回最多找 3 个节点，防止跨段落
-                  let lookBack = 3;
-                  while (prevNode && lookBack > 0) {
-                    if (prevNode.textContent && prevNode.textContent.trim()) {
-                      const prevText = prevNode.textContent.trim();
-                      const prevMatch = prevText.match(new RegExp(`[a-zA-Z]+[${DASH_PATTERN}]$`));
-                      if (prevMatch) {
-                        // 找到了上半部分带横杠的单词
-                        expandedWord = prevMatch[0].slice(0, -1) + expandedWord;
-                        break;
-                      } else if (prevText.match(/[a-zA-Z]+$/)) {
-                        // 遇到了正常的单词，说明没有被截断，停止寻找
-                        break;
-                      }
+                    
+                    // 检查后面的文本开头是否拼接着字母（允许忽略开头多余空白）
+                    const matchNext = followingText.replace(/^\s+/, '').match(/^[a-zA-Z]+/);
+                    if (matchNext) {
+                      expandedWord = expandedWord.slice(0, -1) + matchNext[0];
                     }
-                    prevNode = prevNode.previousSibling;
-                    lookBack--;
                   }
 
                   foundWord = expandedWord.replace(new RegExp(`[${DASH_PATTERN}]`, 'g'), '-').replace(/^-|-$/g, '');
