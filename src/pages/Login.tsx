@@ -33,7 +33,7 @@ export default function Login() {
 
   return (
     <div className="min-h-screen bg-stone-100 flex items-center justify-center font-serif" style={{ backgroundImage: 'radial-gradient(#d6d3cd 1px, transparent 1px)', backgroundSize: '16px 16px' }}>
-      <div className="bg-[#ece9e4] p-10 rounded-sm shadow-[4px_6px_15px_rgba(0,0,0,0.1),_inset_0_0_20px_rgba(0,0,0,0.02)] max-w-sm w-full border border-stone-300">
+      <div className="bg-[#ece9e4] p-6 sm:p-10 mx-4 sm:mx-0 rounded-sm shadow-[4px_6px_15px_rgba(0,0,0,0.1),_inset_0_0_20px_rgba(0,0,0,0.02)] max-w-sm w-full border border-stone-300">
         <div className="flex flex-col items-center mb-8 pb-6 border-b border-stone-300/60">
           <BookOpen size={40} className="text-[#4A3C31] mb-4" />
           <h1 className="text-3xl font-bold text-stone-800 italic">Library.</h1>

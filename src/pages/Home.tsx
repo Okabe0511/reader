@@ -195,12 +195,12 @@ const Home: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-stone-100 text-stone-800 font-serif selection:bg-stone-300 pb-20" style={{ backgroundImage: 'radial-gradient(#d6d3cd 1px, transparent 1px)', backgroundSize: '16px 16px' }}>
-      <div className="max-w-5xl mx-auto px-6 py-16">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-16">
         {/* Vintage Header */}
-        <header className="flex justify-between items-end mb-16 border-b-[3px] border-stone-300 pb-6 relative min-h-[60px]">
+        <header className="flex flex-row justify-between items-center sm:items-end mb-8 sm:mb-16 border-b-[3px] border-stone-300 pb-4 sm:pb-6 relative min-h-[60px]">
           <div className="absolute w-full h-[1px] bg-stone-300 bottom-1 left-0"></div>
           <div>
-            <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-2 text-stone-900 drop-shadow-sm font-serif italic">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight mb-1 sm:mb-2 text-stone-900 drop-shadow-sm font-serif italic">
             Library
             </h1>
           </div>
@@ -317,7 +317,7 @@ const Home: React.FC = () => {
                   </div>
 
                   {!isManaging && (
-                    <div className={`flex items-center flex-shrink-0 transition-opacity ${downloadingStatus[book.id] === 'downloading' || downloadingStatus[book.id] === 'cached' ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                    <div className={`flex items-center flex-shrink-0 transition-opacity ${downloadingStatus[book.id] === 'downloading' || downloadingStatus[book.id] === 'cached' ? 'opacity-100' : 'opacity-100 sm:opacity-0 sm:group-hover:opacity-100'}`}>
                       {downloadingStatus[book.id] === 'cached' ? (
                         <div className="text-[#4A3C31] p-1.5" title="已缓存至本地">
                           <CheckCircle2 size={15} />

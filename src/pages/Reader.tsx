@@ -5,7 +5,8 @@ import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 import { getBook, updateBookPage, type Book } from '../utils/db';
 import { translateWord } from '../utils/translate';
-import { ArrowLeft, Loader2, ZoomIn, ZoomOut, Volume2 } from 'lucide-react';
+import { ArrowLeft, Loader2, ZoomIn, ZoomOut, Volume2, Sun, Moon } from 'lucide-react';
+import { Coffee } from 'lucide-react';
 import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
 pdfjs.GlobalWorkerOptions.workerSrc = pdfWorker;
@@ -26,6 +27,51 @@ const Reader: React.FC = () => {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+  
+  type Theme = 'light' | 'sepia' | 'dark';
+  const [theme, setTheme] = useState<Theme>(
+    (localStorage.getItem('reader_theme') as Theme) || 'light'
+  );
+
+  useEffect(() => {
+    localStorage.setItem('reader_theme', theme);
+  }, [theme]);
+
+  const themeOption = {
+    light: {
+      appBg: 'bg-gray-100',
+      headerBg: 'bg-white',
+      textColor: 'text-gray-800',
+      btnHover: 'hover:bg-gray-100',
+      scrollBg: 'bg-gray-100',
+      pdfFilter: 'none',
+      iconColor: 'text-gray-600',
+    },
+    sepia: {
+      appBg: 'bg-[#f4ecd8]',
+      headerBg: 'bg-[#ebe3cd]',
+      textColor: 'text-stone-800',
+      btnHover: 'hover:bg-[#dfd7c0]',
+      scrollBg: 'bg-[#f4ecd8]',
+      pdfFilter: 'sepia(0.3) contrast(0.9) brightness(0.95)',
+      iconColor: 'text-stone-600',
+    },
+    dark: {
+      appBg: 'bg-gray-950',
+      headerBg: 'bg-gray-900 border-b border-gray-800',
+      textColor: 'text-gray-300',
+      btnHover: 'hover:bg-gray-800',
+      scrollBg: 'bg-gray-950',
+      pdfFilter: 'invert(0.9) hue-rotate(180deg) brightness(1.1) contrast(1.05)',
+      iconColor: 'text-gray-400',
+    }
+  }[theme];
+
+  const cycleTheme = () => {
+    if (theme === 'light') setTheme('sepia');
+    else if (theme === 'sepia') setTheme('dark');
+    else setTheme('light');
+  };
 
   useEffect(() => {
     if (id) {
@@ -37,7 +83,7 @@ const Reader: React.FC = () => {
           }
           let pdfData: Uint8Array | ArrayBuffer = data.data;
           if (!(pdfData instanceof Uint8Array) && !(pdfData instanceof ArrayBuffer)) {
-            pdfData = new Uint8Array(Object.values(data.data as any));
+            pdfData = new Uint8Array(Object.values(data.data as unknown as Record<string, number>));
           }
           const blob = new Blob([pdfData as BlobPart], { type: 'application/pdf' });
           setPdfUrl(URL.createObjectURL(blob));
@@ -83,7 +129,7 @@ const Reader: React.FC = () => {
       const selection = window.getSelection();
       if (selection && !selection.isCollapsed) {
         const text = selection.toString().trim();
-        if (text.length > 0 && text.length < 50 && /^[a-zA-Z\s\-]+$/.test(text)) {
+        if (text.length > 0 && text.length < 50 && /^[a-zA-Z\s-]+$/.test(text)) {
           foundWord = text;
           wordRect = selection.getRangeAt(0).getBoundingClientRect();
           validSelection = true;
@@ -98,9 +144,9 @@ const Reader: React.FC = () => {
             const offset = range.startOffset;
 
             // Find the word bounds around offset
-            const match = text.match(/[a-zA-Z\-]+/g);
+            const match = text.match(/[a-zA-Z-]+/g);
             if (match) {
-              const regex = /[a-zA-Z\-]+/g;
+              const regex = /[a-zA-Z-]+/g;
               let m;
               let isWordClicked = false;
               while ((m = regex.exec(text)) !== null) {
@@ -227,34 +273,45 @@ const Reader: React.FC = () => {
 
   if (!book || !pdfUrl) {
     return (
-      <div className="h-screen flex items-center justify-center bg-gray-50">
-        <Loader2 className="animate-spin text-blue-500 mr-2" />
-        <span className="text-gray-500">加载阅读器中...</span>
+      <div className={`h-screen flex items-center justify-center ${themeOption.appBg}`}>
+        <Loader2 className={`animate-spin ${themeOption.iconColor} mr-2`} />
+        <span className={themeOption.textColor}>加载阅读器中...</span>
       </div>
     );
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-100 relative overflow-hidden" ref={containerRef}>
+    <div className={`h-screen flex flex-col relative overflow-hidden transition-colors duration-300 ${themeOption.appBg}`} ref={containerRef}>
       {/* Header */}
-      <div className="h-14 bg-white shadow-sm flex items-center px-2 sm:px-4 shrink-0 z-10 sticky top-0">
+      <div className={`h-14 flex items-center px-2 sm:px-4 shrink-0 z-10 sticky top-0 transition-colors duration-300 ${themeOption.headerBg}`}>
         <button 
           onClick={() => navigate('/')} 
-          className="p-1 sm:p-2 hover:bg-gray-100 rounded-full transition-colors mr-1 sm:mr-3 text-gray-600"
+          className={`p-1 sm:p-2 rounded-full transition-colors mr-1 sm:mr-3 ${themeOption.iconColor} ${themeOption.btnHover}`}
         >
           <ArrowLeft size={20} />
         </button>
-        <h1 className="text-sm sm:text-lg font-medium text-gray-800 truncate flex-1" title={book.name}>
+        <h1 className={`text-sm sm:text-lg font-medium truncate flex-1 ${themeOption.textColor}`} title={book.name}>
           {book.name}
         </h1>
-        <div className="ml-2 sm:ml-auto flex items-center gap-1 sm:gap-4 text-xs sm:text-sm text-gray-600 shrink-0">
-          <span className="hidden md:inline text-xs text-gray-400 mr-2">点击或划选英文单词进行翻译</span>
+        <div className={`ml-2 sm:ml-auto flex items-center gap-1 sm:gap-4 text-xs sm:text-sm shrink-0 ${themeOption.textColor}`}>
+          <span className="hidden md:inline text-xs opacity-60 mr-2">点击或划选英文单词进行翻译</span>
           
+          {/* Theme Toggle */}
+          <button
+            onClick={cycleTheme}
+            className={`p-1 sm:p-1.5 rounded-full transition-colors mr-1 ${themeOption.btnHover} ${themeOption.iconColor}`}
+            title="切换阅读主题"
+          >
+            {theme === 'light' && <Sun size={16} />}
+            {theme === 'sepia' && <Coffee size={16} />}
+            {theme === 'dark' && <Moon size={16} />}
+          </button>
+
           {/* Zoom Controls */}
-          <div className="flex items-center bg-gray-100 rounded mr-1">
+          <div className="flex items-center rounded mr-1 opacity-80">
             <button 
               onClick={() => setScale(s => Math.max(0.5, s - 0.1))} 
-              className="p-1 sm:p-1.5 hover:bg-gray-200 rounded disabled:opacity-50"
+              className={`p-1 sm:p-1.5 rounded disabled:opacity-30 ${themeOption.btnHover}`}
               disabled={scale <= 0.5}
             >
               <ZoomOut size={14} />
@@ -264,50 +321,36 @@ const Reader: React.FC = () => {
             </span>
             <button 
               onClick={() => setScale(s => Math.min(3.0, s + 0.1))} 
-              className="p-1 sm:p-1.5 hover:bg-gray-200 rounded disabled:opacity-50"
+              className={`p-1 sm:p-1.5 rounded disabled:opacity-30 ${themeOption.btnHover}`}
               disabled={scale >= 3.0}
             >
               <ZoomIn size={14} />
             </button>
           </div>
 
-          <button 
-            disabled={pageNumber <= 1} 
-            onClick={() => {
-              setPageNumber(p => p - 1);
-              scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
-            className="px-2 py-1 bg-gray-100 rounded hover:bg-gray-200 disabled:opacity-50"
-          >
-            上页
-          </button>
           <span className="w-10 sm:w-auto text-center">{pageNumber} <span className="hidden sm:inline">/ {numPages || '-'}</span></span>
-          <button 
-            disabled={pageNumber >= numPages} 
-            onClick={() => {
-              setPageNumber(p => p + 1);
-              scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
-            className="px-2 py-1 bg-gray-100 rounded hover:bg-gray-200 disabled:opacity-50"
-          >
-            下页
-          </button>
         </div>
       </div>
 
       {/* PDF Viewer */}
       <div 
         ref={scrollRef}
-        className="flex-1 overflow-auto bg-gray-100 py-2 sm:py-6 custom-scrollbar text-center"
+        className={`flex-1 overflow-auto py-2 sm:py-6 custom-scrollbar text-center transition-colors duration-300 ${themeOption.scrollBg}`}
       >
-        <div className="inline-block bg-white shadow-lg relative rounded-sm group text-left">
+        <div 
+          className="inline-block relative rounded-sm group text-left transition-all duration-300"
+          style={{ 
+            filter: themeOption.pdfFilter,
+            boxShadow: theme === 'dark' ? '0 10px 25px rgba(0,0,0,0.5)' : '0 10px 25px rgba(0,0,0,0.1)'
+          }}
+        >
           <Document
             file={pdfUrl}
             onLoadSuccess={({ numPages }) => setNumPages(numPages)}
             onLoadError={error => console.error('PDF加载错误:', error)}
             loading={
-              <div className="flex items-center justify-center p-20 text-gray-400">
-                <Loader2 className="animate-spin mr-2" /> 渲染中...
+              <div className={`flex items-center justify-center p-20 ${themeOption.textColor} opacity-60`}>
+                <Loader2 className="animate-spin mr-2" /> 渲染网页中...
               </div>
             }
           >

@@ -103,27 +103,27 @@ export default function Settings() {
 
   return (
     <div className="min-h-screen bg-stone-100 text-stone-800 font-serif" style={{ backgroundImage: 'radial-gradient(#d6d3cd 1px, transparent 1px)', backgroundSize: '16px 16px' }}>
-      <div className="max-w-2xl mx-auto px-6 py-12">
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
         {/* Header */}
-        <header className="flex items-center mb-12 border-b-[3px] border-stone-300 pb-6 relative">
+        <header className="flex items-center mb-8 sm:mb-12 border-b-[3px] border-stone-300 pb-4 sm:pb-6 relative">
           <div className="absolute w-full h-[1px] bg-stone-300 bottom-1 left-0"></div>
           <button 
             onClick={() => navigate('/')}
-            className="mr-6 p-2 rounded-full hover:bg-stone-200 transition-colors text-stone-600"
+            className="mr-3 sm:mr-6 p-2 rounded-full hover:bg-stone-200 transition-colors text-stone-600"
             title="返回书架"
           >
             <ArrowLeft size={24} />
           </button>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-stone-900 drop-shadow-sm font-serif italic">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-stone-900 drop-shadow-sm font-serif italic">
               偏好设置
             </h1>
-            <p className="text-stone-500 text-sm mt-1">云端数据与账号管理</p>
+            <p className="text-stone-500 text-xs sm:text-sm mt-1">云端数据与账号管理</p>
           </div>
         </header>
 
         {/* Content */}
-        <div className="bg-[#ece9e4] p-8 rounded-sm shadow-[4px_6px_15px_rgba(0,0,0,0.08),_inset_0_0_20px_rgba(0,0,0,0.02)] border border-stone-300 mb-8">
+        <div className="bg-[#ece9e4] p-5 sm:p-8 rounded-sm shadow-[4px_6px_15px_rgba(0,0,0,0.08),_inset_0_0_20px_rgba(0,0,0,0.02)] border border-stone-300 mb-8">
           <h2 className="text-xl font-bold text-stone-800 mb-6 flex items-center gap-2 border-b border-stone-300/60 pb-3">
             <User size={20} className="text-[#4A3C31]" />
             账号信息
