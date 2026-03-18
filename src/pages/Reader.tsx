@@ -134,11 +134,12 @@ const Reader: React.FC = () => {
       let wordRect: DOMRect | undefined;
 
       // Check for translation (selected text or single click)
+      const DASH_PATTERN = "\\-\\u00AD\\u2010-\\u2014\\u2212";
       const selection = window.getSelection();
       if (selection && !selection.isCollapsed) {
         const text = selection.toString().trim();
         // Remove hyphens that are followed by whitespace (across lines) to merge words
-        const cleanText = text.replace(/-\s+/g, '');
+        const cleanText = text.replace(new RegExp(`[${DASH_PATTERN}]\\s+`, 'g'), '').replace(new RegExp(`[${DASH_PATTERN}]`, 'g'), '-');
         if (cleanText.length > 0 && cleanText.length < 50 && /^[a-zA-Z\s-]+$/.test(cleanText)) {
           foundWord = cleanText;
           wordRect = selection.getRangeAt(0).getBoundingClientRect();
@@ -154,9 +155,9 @@ const Reader: React.FC = () => {
             const offset = range.startOffset;
 
             // Find the word bounds around offset
-            const match = text.match(/[a-zA-Z-]+/g);
+            const match = text.match(new RegExp(`[a-zA-Z${DASH_PATTERN}]+`, 'g'));
             if (match) {
-              const regex = /[a-zA-Z-]+/g;
+              const regex = new RegExp(`[a-zA-Z${DASH_PATTERN}]+`, 'g');
               let m;
               let isWordClicked = false;
               while ((m = regex.exec(text)) !== null) {
@@ -165,16 +166,22 @@ const Reader: React.FC = () => {
                   
                   // 处理跨行连字符单词，组合上一行或下一行的对应部分
                   // 情况1：点击的是上半部分 (例如 "omnip-")，或者它包含连字符并且在句子末尾附近
-                  if (expandedWord.endsWith('-')) {
+                  if (new RegExp(`[${DASH_PATTERN}]$`).test(expandedWord)) {
                     let nextNode: Node | null = textNode.parentElement?.nextSibling || null;
-                    while (nextNode && (!nextNode.textContent || !nextNode.textContent.trim())) {
-                      nextNode = nextNode.nextSibling;
-                    }
-                    if (nextNode && nextNode.textContent) {
-                      const nextMatch = nextNode.textContent.match(/^[a-zA-Z]+/);
-                      if (nextMatch) {
-                        expandedWord = expandedWord.slice(0, -1) + nextMatch[0];
+                    let lookAhead = 3;
+                    while (nextNode && lookAhead > 0) {
+                      if (nextNode.textContent && nextNode.textContent.trim()) {
+                        const nextText = nextNode.textContent.trim();
+                        const nextMatch = nextText.match(/^[a-zA-Z]+/);
+                        if (nextMatch) {
+                          expandedWord = expandedWord.slice(0, -1) + nextMatch[0];
+                          break;
+                        } else if (nextText.match(/^[a-zA-Z]/)) {
+                          break;
+                        }
                       }
+                      nextNode = nextNode.nextSibling;
+                      lookAhead--;
                     }
                   } 
                   
@@ -186,7 +193,7 @@ const Reader: React.FC = () => {
                   while (prevNode && lookBack > 0) {
                     if (prevNode.textContent && prevNode.textContent.trim()) {
                       const prevText = prevNode.textContent.trim();
-                      const prevMatch = prevText.match(/[a-zA-Z]+-$/);
+                      const prevMatch = prevText.match(new RegExp(`[a-zA-Z]+[${DASH_PATTERN}]$`));
                       if (prevMatch) {
                         // 找到了上半部分带横杠的单词
                         expandedWord = prevMatch[0].slice(0, -1) + expandedWord;
@@ -200,7 +207,7 @@ const Reader: React.FC = () => {
                     lookBack--;
                   }
 
-                  foundWord = expandedWord;
+                  foundWord = expandedWord.replace(new RegExp(`[${DASH_PATTERN}]`, 'g'), '-').replace(/^-|-$/g, '');
                   const wordRange = document.createRange();
                   wordRange.setStart(textNode, m.index);
                   wordRange.setEnd(textNode, m.index + m[0].length);
