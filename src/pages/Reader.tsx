@@ -135,11 +135,50 @@ const Reader: React.FC = () => {
 
       // Check for translation (selected text or single click)
       const DASH_PATTERN = "\\-\\u00AD\\u2010-\\u2014\\u2212";
+
+      const resolveFullWord = (node: Node, offset: number): string | null => {
+        const container = node.parentElement?.closest('.react-pdf__Page__textContent');
+        if (!container) return null;
+        
+        let fullText = '';
+        let globalOffset = -1;
+        const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null);
+        
+        let currNode;
+        while ((currNode = walker.nextNode())) {
+          if (currNode === node) {
+            globalOffset = fullText.length + offset;
+          }
+          fullText += currNode.nodeValue || '';
+        }
+
+        if (globalOffset === -1) return null;
+
+        // 全局匹配带连字符的完整单词
+        const regex = new RegExp(`[a-zA-Z]+([${DASH_PATTERN}]\\s*[a-zA-Z]+)*`, 'g');
+        let match;
+        while ((match = regex.exec(fullText)) !== null) {
+          if (globalOffset >= match.index && globalOffset <= match.index + match[0].length) {
+            return match[0].replace(new RegExp(`[${DASH_PATTERN}]\\s*`, 'g'), '');
+          }
+        }
+        return null;
+      };
+
       const selection = window.getSelection();
       if (selection && !selection.isCollapsed) {
         const text = selection.toString().trim();
-        // Remove hyphens that are followed by whitespace (across lines) to merge words
-        const cleanText = text.replace(new RegExp(`[${DASH_PATTERN}]\\s+`, 'g'), '').replace(new RegExp(`[${DASH_PATTERN}]`, 'g'), '-');
+        let cleanText = text.replace(new RegExp(`[${DASH_PATTERN}]\\s+`, 'g'), '').replace(new RegExp(`[${DASH_PATTERN}]`, 'g'), '-');
+        
+        // 如果长按选中了单个单词或是连字符被截断的单词周边，利用全局搜索扩展它
+        if (!text.includes(' ') || new RegExp(`[${DASH_PATTERN}]`).test(text)) {
+          const range = selection.getRangeAt(0);
+          if (range.startContainer.nodeType === Node.TEXT_NODE) {
+            const expanded = resolveFullWord(range.startContainer, range.startOffset);
+            if (expanded) cleanText = expanded;
+          }
+        }
+
         if (cleanText.length > 0 && cleanText.length < 50 && /^[a-zA-Z\s-]+$/.test(cleanText)) {
           foundWord = cleanText;
           wordRect = selection.getRangeAt(0).getBoundingClientRect();
@@ -154,7 +193,7 @@ const Reader: React.FC = () => {
             const text = textNode.nodeValue || '';
             const offset = range.startOffset;
 
-            // Find the word bounds around offset
+            // Find the word bounds around offset IN LOCAL NODE TO VALIDATE CLICK
             const match = text.match(new RegExp(`[a-zA-Z${DASH_PATTERN}]+`, 'g'));
             if (match) {
               const regex = new RegExp(`[a-zA-Z${DASH_PATTERN}]+`, 'g');
@@ -162,50 +201,10 @@ const Reader: React.FC = () => {
               let isWordClicked = false;
               while ((m = regex.exec(text)) !== null) {
                 if (offset >= m.index && offset <= m.index + m[0].length) {
-                  let expandedWord = m[0];
+                  // 通过全局 TreeWalker 精确还原跨行单词
+                  const expandedWord = resolveFullWord(textNode, offset) || m[0].replace(new RegExp(`[${DASH_PATTERN}]`, 'g'), '-').replace(/^-|-$/g, '');
+                  foundWord = expandedWord;
 
-                  // 由于 react-pdf 的分层特点，一行或跨行的文本会被随意拆分成多个并列的 span 节点。
-                  // 为了安全地拼接被连字符截断的单词，我们直接在 DOM 中向前后捕获一定距离的文本。
-
-                  // 1. 往前找（解决点击了下半部分 "otent" 的情况，向前寻找 "omnip-"）
-                  let precedingText = text.substring(0, m.index);
-                  let crawlerPrev = textNode.parentElement?.previousElementSibling || null;
-                  let stepsPrev = 15;
-                  while (crawlerPrev && stepsPrev > 0 && precedingText.length < 60) {
-                    if (crawlerPrev.textContent) {
-                      precedingText = crawlerPrev.textContent + precedingText;
-                    }
-                    crawlerPrev = crawlerPrev.previousElementSibling;
-                    stepsPrev--;
-                  }
-                  
-                  // 检查前面的文本合并后，是否正好以 "字母+连字符" 结尾（允许忽略尾部多余空白）
-                  const matchPrev = precedingText.replace(/\s+$/, '').match(new RegExp(`[a-zA-Z]+[${DASH_PATTERN}]$`));
-                  if (matchPrev) {
-                    expandedWord = matchPrev[0].slice(0, -1) + expandedWord;
-                  }
-
-                  // 2. 往后找（解决点击了上半部分 "omnip-" 的情况，向后寻找 "otent"）
-                  if (new RegExp(`[${DASH_PATTERN}]$`).test(expandedWord)) {
-                    let followingText = text.substring(m.index + m[0].length);
-                    let crawlerNext = textNode.parentElement?.nextElementSibling || null;
-                    let stepsNext = 15;
-                    while (crawlerNext && stepsNext > 0 && followingText.length < 60) {
-                      if (crawlerNext.textContent) {
-                        followingText = followingText + crawlerNext.textContent;
-                      }
-                      crawlerNext = crawlerNext.nextElementSibling;
-                      stepsNext--;
-                    }
-                    
-                    // 检查后面的文本开头是否拼接着字母（允许忽略开头多余空白）
-                    const matchNext = followingText.replace(/^\s+/, '').match(/^[a-zA-Z]+/);
-                    if (matchNext) {
-                      expandedWord = expandedWord.slice(0, -1) + matchNext[0];
-                    }
-                  }
-
-                  foundWord = expandedWord.replace(new RegExp(`[${DASH_PATTERN}]`, 'g'), '-').replace(/^-|-$/g, '');
                   const wordRange = document.createRange();
                   wordRange.setStart(textNode, m.index);
                   wordRange.setEnd(textNode, m.index + m[0].length);
